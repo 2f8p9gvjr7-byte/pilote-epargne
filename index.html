@@ -256,15 +256,10 @@ const MODULES = [
      {value:'seul',label:'Personne seule (abatt. 4 600 €)'},
      {value:'couple',label:"Couple, imposition commune (abatt. 9 200 €)"},
    ]},
-   {key:'tmi',label:"Taux marginal d'imposition (TMI)",type:'select',def:'0.30',
-     hint:"Indiqué sur la dernière page de votre avis d'imposition.",
-     options:[
-       {value:'0',label:'0 %'},
-       {value:'0.11',label:'11 %'},
-       {value:'0.30',label:'30 %'},
-       {value:'0.41',label:'41 %'},
-       {value:'0.45',label:'45 %'},
-     ]},
+   {key:'tmi',label:"Taux marginal d'imposition (TMI)",unit:'%',def:30,
+     hint:"Votre vrai taux (avis d'imposition, ou barème de votre pays de résidence fiscale)."},
+   {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:17.2,
+     hint:"Taux CSG/CRDS actuel — modifiable si la loi change ou hors de France."},
  ],
  compute:v=>{
    const r=v.rendement/100, g=v.fraisGestion/100, i=v.inflation/100, n=v.duree;
@@ -281,17 +276,19 @@ const MODULES = [
    const fraisEntreePreleves = totalVerse-totalInvesti;
    const gainBrut = Math.max(capitalFinal-totalVerse,0);
 
-   // barème progressif : taux marginal via quotient familial
-   const tmi = parseFloat(v.tmi);
+   // barème progressif : taux saisi directement par l'utilisateur
+   const tmi = v.tmi/100;
+   const tauxPS = v.tauxPS/100;
 
    const abattement = n>=8 ? (v.foyer==='couple'?9200:4600) : 0;
    const gainImposable = Math.max(gainBrut-abattement,0);
    const tauxPFU = n>=8 ? (totalVerse<=150000?0.075:0.128) : 0.128;
-   const prelevSociaux = gainBrut*0.172;
-   const impotPFU = gainImposable*tauxPFU + prelevSociaux;
-   const impotBareme = gainImposable*tmi + prelevSociaux;
-   const impotRetenu = Math.min(impotPFU,impotBareme);
-   const optionRetenue = impotPFU<=impotBareme? 'Prélèvement forfaitaire (PFU)':'Barème progressif';
+   const prelevSociaux = gainBrut*tauxPS;
+   const irPFU = gainImposable*tauxPFU;
+   const irBareme = gainImposable*tmi;
+   const irRetenu = Math.min(irPFU,irBareme);
+   const optionRetenue = irPFU<=irBareme? 'Prélèvement forfaitaire (PFU)':'Barème progressif';
+   const impotRetenu = irRetenu+prelevSociaux;
    const gainNet = gainBrut-impotRetenu;
    const capitalFinalNet = totalVerse+gainNet;
 
@@ -304,7 +301,8 @@ const MODULES = [
        {label:'Gain imposable',value:fmtEUR(gainImposable)},
        {label:'Taux marginal (TMI)',value:fmtPct(tmi)},
        {label:'Option la plus avantageuse',value:optionRetenue},
-       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impotRetenu)},
+       {label:"Impôt sur le revenu",value:fmtEUR(irRetenu)},
+       {label:'Prélèvements sociaux',value:fmtEUR(prelevSociaux)},
        {label:'Gain net',value:fmtEUR(gainNet)},
      ]};
  }},
@@ -320,15 +318,10 @@ const MODULES = [
      {value:'pea',label:"PEA"},
      {value:'ct',label:'Compte-titres ordinaire (actions, ETF hors PEA)'},
    ]},
-   {key:'tmi',label:"Taux marginal d'imposition (TMI)",type:'select',def:'0.30',
-     hint:"Indiqué sur la dernière page de votre avis d'imposition.",
-     options:[
-       {value:'0',label:'0 %'},
-       {value:'0.11',label:'11 %'},
-       {value:'0.30',label:'30 %'},
-       {value:'0.41',label:'41 %'},
-       {value:'0.45',label:'45 %'},
-     ]},
+   {key:'tmi',label:"Taux marginal d'imposition (TMI)",unit:'%',def:30,
+     hint:"Votre vrai taux (avis d'imposition, ou barème de votre pays de résidence fiscale)."},
+   {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:17.2,
+     hint:"Taux CSG/CRDS actuel — modifiable si la loi change ou hors de France."},
  ],
  compute:v=>{
    const r=v.rendement/100,i=v.inflation/100,n=v.duree;
@@ -339,22 +332,24 @@ const MODULES = [
    const capitalReel=capitalFinal/Math.pow(1+i,n);
    const perte=capitalFinal-capitalReel;
 
-   const tmi = parseFloat(v.tmi);
-   const prelevSociaux = plusValue*0.172;
+   const tmi = v.tmi/100;
+   const tauxPS = v.tauxPS/100;
+   const prelevSociaux = plusValue*tauxPS;
    const isPEA = v.enveloppe==='pea';
    const peaExonere = isPEA && n>=5;
 
-   let impotRetenu, regime;
+   let irRetenu, regime;
    if(peaExonere){
-     impotRetenu = prelevSociaux;
+     irRetenu = 0;
      regime = "PEA exonéré d'IR (retrait après 5 ans)";
    } else {
-     const impotPFU = plusValue*0.128 + prelevSociaux;
-     const impotBareme = plusValue*tmi + prelevSociaux;
-     impotRetenu = Math.min(impotPFU, impotBareme);
-     const base = impotPFU<=impotBareme? 'PFU 12,8 % + PS' : 'Barème progressif + PS';
+     const irPFU = plusValue*0.128;
+     const irBareme = plusValue*tmi;
+     irRetenu = Math.min(irPFU, irBareme);
+     const base = irPFU<=irBareme? 'PFU 12,8 %' : 'Barème progressif';
      regime = isPEA? `${base} (retrait avant 5 ans)` : base;
    }
+   const impotRetenu = irRetenu+prelevSociaux;
    const gainNet = plusValue - impotRetenu;
    const capitalFinalNet = totalVerse + gainNet;
 
@@ -364,7 +359,8 @@ const MODULES = [
        {label:'Plus-value brute',value:fmtEUR(plusValue)},
        {label:'Régime fiscal retenu',value:regime},
        {label:'Taux marginal (TMI)',value:fmtPct(tmi)},
-       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impotRetenu)},
+       {label:"Impôt sur le revenu",value:fmtEUR(irRetenu)},
+       {label:'Prélèvements sociaux',value:fmtEUR(prelevSociaux)},
        {label:'Gain net',value:fmtEUR(gainNet)},
        {label:"Capital brut en pouvoir d'achat réel",value:fmtEUR(capitalReel)},
        {label:"Perte de pouvoir d'achat (inflation)",value:fmtEUR(perte)},
@@ -401,6 +397,8 @@ const MODULES = [
    {key:'loyerAnnuel',label:'Loyer annuel',unit:'€',def:10800},
    {key:'chargesAnnuelles',label:'Charges annuelles',unit:'€',def:1500},
    {key:'tauxImposition',label:"Taux marginal d'imposition",unit:'%',def:30},
+   {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:17.2,
+     hint:"Taux CSG/CRDS actuel — modifiable si la loi change ou hors de France."},
    {key:'regime',label:'Régime fiscal',type:'select',def:'lmnp',options:[
      {value:'lmnp',label:'LMNP (micro-BIC, abatt. 50 %)'},
      {value:'nue',label:'Location nue (micro-foncier, abatt. 30 %)'},
@@ -410,13 +408,16 @@ const MODULES = [
    const abattement = v.regime==='lmnp'? 0.5 : 0.3;
    const revenuNetAvantImpot = v.loyerAnnuel - v.chargesAnnuelles;
    const baseImposable = Math.max(revenuNetAvantImpot,0)*(1-abattement);
-   const impot = baseImposable*(v.tauxImposition/100+0.172);
+   const ir = baseImposable*(v.tauxImposition/100);
+   const ps = baseImposable*(v.tauxPS/100);
+   const impot = ir+ps;
    const cashFlow = revenuNetAvantImpot - impot;
    const rendementNet = v.prixBien? cashFlow/v.prixBien : 0;
    return {primary:{label:'Rendement net',value:fmtPct(rendementNet)},
      secondary:[
        {label:'Revenu net avant impôt',value:fmtEUR(revenuNetAvantImpot)},
-       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impot)},
+       {label:'Impôt sur le revenu',value:fmtEUR(ir)},
+       {label:'Prélèvements sociaux',value:fmtEUR(ps)},
        {label:'Cash-flow annuel',value:fmtEUR(cashFlow)},
        {label:'Cash-flow mensuel',value:fmtEUR(cashFlow/12)},
      ]};
