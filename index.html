@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Patrimoine HP</title>
+<meta name="theme-color" content="#0d1526"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<style>
+  :root{
+    --bg:#0d1526;
+    --bg2:#1a2035;
+    --card:#1e2d4a;
+    --accent:#f5a623;
+    --accent-dim:rgba(245,166,35,0.28);
+    --accent-faint:rgba(245,166,35,0.12);
+    --green:#2ecc71;
+    --lcd-bg:#08130d;
+    --text:#ffffff;
+    --text-dim:rgba(255,255,255,0.65);
+    --text-faint:rgba(255,255,255,0.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);min-height:100vh;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"SF Mono",ui-monospace,"IBM Plex Mono",Menlo,monospace;}
+
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;border-bottom:1px solid var(--accent-faint);
+    background:var(--bg2);
+    position:sticky;top:0;z-index:5;
+  }
+  header h1{font-size:17px;margin:0;font-weight:600;}
+  header .sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-top:2px;}
+  #menuBtn{
+    background:transparent;border:1px solid var(--accent-dim);color:var(--text);
+    padding:8px 10px;border-radius:6px;font-size:16px;line-height:1;
+  }
+
+  #layout{display:flex;min-height:calc(100vh - 62px);}
+  nav{
+    width:270px;flex-shrink:0;background:var(--bg2);
+    border-right:1px solid var(--accent-faint);
+    overflow-y:auto;
+  }
+  nav button.navItem{
+    all:unset;cursor:pointer;display:flex;gap:10px;align-items:flex-start;
+    width:100%;padding:12px 18px;border-left:2px solid transparent;
+  }
+  nav button.navItem:active{background:var(--accent-faint);}
+  nav button.navItem.active{background:var(--accent-faint);border-left-color:var(--accent);}
+  nav .num{font-size:11px;color:var(--text-faint);margin-top:2px;min-width:18px;}
+  nav button.navItem.active .num{color:var(--accent);}
+  nav .navLabel{font-size:14px;color:var(--text-dim);}
+  nav button.navItem.active .navLabel{color:var(--text);font-weight:600;}
+
+  main{flex:1;padding:24px 20px 60px;max-width:640px;}
+  .moduleHead{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;}
+  .moduleHead .num{color:var(--accent);font-size:12px;}
+  .moduleHead h2{font-size:20px;margin:0;font-weight:600;}
+  .subtitle{color:var(--text-dim);font-size:13px;margin:4px 0 20px;}
+
+  .lcdFrame{
+    background:linear-gradient(180deg,#2a2118,#1c160f);
+    border:1px solid var(--accent-dim);border-radius:10px;padding:14px;margin-bottom:20px;
+  }
+  .lcdScreen{
+    background:var(--lcd-bg);border-radius:6px;padding:18px 20px;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.55);position:relative;overflow:hidden;
+  }
+  .lcdScreen::before{
+    content:"";position:absolute;inset:0;opacity:.06;pointer-events:none;
+    background-image:repeating-linear-gradient(180deg,#fff 0px,#fff 1px,transparent 1px,transparent 3px);
+  }
+  .lcdTop{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(46,204,113,.55);}
+  .lcdLabel{margin-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(46,204,113,.55);}
+  .lcdValue{margin-top:4px;font-size:30px;font-weight:600;color:var(--green);word-break:break-all;}
+  .lcdValue.negative{color:#e3a98f;}
+
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+  @media(max-width:520px){.fields{grid-template-columns:1fr;}}
+  .field label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+  .field label .unit{color:var(--accent);}
+  .field input, .field select{
+    width:100%;padding:10px 12px;border-radius:5px;border:1px solid var(--accent-dim);
+    background:var(--bg);color:var(--text);font-size:14px;
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--accent);}
+
+  .sectionLabel{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 8px;}
+  .resultsTable{border:1px solid var(--accent-faint);border-radius:6px;overflow:hidden;margin-bottom:20px;}
+  .resultsTable .row{display:flex;justify-content:space-between;padding:10px 14px;font-size:14px;border-top:1px solid var(--accent-faint);}
+  .resultsTable .row:first-child{border-top:none;}
+  .resultsTable .row:nth-child(even){background:rgba(245,166,35,0.04);}
+  .resultsTable .rlabel{color:var(--text-dim);}
+  .resultsTable .rvalue{font-weight:600;}
+
+  .repItem{margin-bottom:10px;}
+  .repTop{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:4px;}
+  .repBar{height:6px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;}
+  .repFill{height:100%;background:var(--accent);border-radius:4px;}
+
+  .footnote{font-size:11px;color:var(--text-faint);margin-top:24px;}
+
+  #updateBanner{
+    display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;
+    background:var(--card);border-top:1px solid var(--accent);
+    padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;
+  }
+  #updateBanner span{font-size:13px;color:var(--text);}
+  #updateBanner button{
+    background:var(--accent);color:#1a1000;border:none;border-radius:6px;
+    padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+
+  #navOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;}
+  @media(min-width:860px){
+    #menuBtn{display:none;}
+    #navOverlay{display:none !important;}
+    nav{position:static;}
+  }
+  @media(max-width:859px){
+    nav{position:fixed;top:0;bottom:0;left:0;z-index:10;transform:translateX(-100%);transition:transform .2s ease;}
+    nav.open{transform:translateX(0);}
+    #navOverlay.open{display:block;}
+    main{max-width:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Bibliothèque Patrimoine</h1>
+    <div class="sub">Solveurs pour HP‑19BII+</div>
+  </div>
+  <button id="menuBtn" aria-label="Menu">☰</button>
+</header>
+
+<div id="layout">
+  <div id="navOverlay"></div>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="updateBanner">
+  <span>Nouvelle version disponible</span>
+  <button id="updateBtn">Mettre à jour</button>
+</div>
+
+<script>
+/* ---------------- formatting ---------------- */
+const fmtEUR = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const fmtEURc = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+const fmtPct = v => ((isFinite(v)?v*100:0).toLocaleString('fr-FR',{maximumFractionDigits:2}))+' %';
+const fmtNum = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{maximumFractionDigits:1});
+
+/* ---------------- modules ---------------- */
+const MODULES = [
+{id:'epargne',num:'01',title:"Capitalisation d'une épargne",
+ subtitle:"Versements mensuels réguliers, capital final, pouvoir d'achat réel",
+ fields:[
+   {key:'capitalInitial',label:'Capital initial',unit:'€',def:5000},
+   {key:'versement',label:'Versement mensuel',unit:'€',def:300},
+   {key:'rendement',label:'Rendement annuel',unit:'%',def:5},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+   {key:'duree',label:'Durée',unit:'ans',def:15},
+ ],
+ compute:v=>{
+   const r=v.rendement/100,i=v.inflation/100,n=v.duree;
+   const rm=Math.pow(1+r,1/12)-1, m=n*12;
+   const fvInit=v.capitalInitial*Math.pow(1+r,n);
+   const fvContrib = rm===0? v.versement*m : v.versement*((Math.pow(1+rm,m)-1)/rm);
+   const capitalFinal=fvInit+fvContrib;
+   const totalVerse=v.capitalInitial+v.versement*m;
+   const interets=capitalFinal-totalVerse;
+   const capitalReel=capitalFinal/Math.pow(1+i,n);
+   const rendementReel=(1+r)/(1+i)-1;
+   return {primary:{label:'Capital final',value:fmtEUR(capitalFinal)},
+     secondary:[
+       {label:'Total versé',value:fmtEUR(totalVerse)},
+       {label:'Intérêts gagnés',value:fmtEUR(interets)},
+       {label:"Pouvoir d'achat réel",value:fmtEUR(capitalReel)},
+       {label:'Inflation cumulée',value:fmtPct(Math.pow(1+i,n)-1)},
+       {label:'Rendement réel',value:fmtPct(rendementReel)},
+     ]};
+ }},
+{id:'retraite',num:'02',title:'Retraite',
+ subtitle:"Projection de l'épargne retraite jusqu'à l'âge de départ",
+ fields:[
+   {key:'ageActuel',label:'Âge actuel',unit:'ans',def:60},
+   {key:'ageDepart',label:'Âge de départ',unit:'ans',def:65},
+   {key:'epargne',label:'Épargne mensuelle',unit:'€',def:500},
+   {key:'rendement',label:'Rendement annuel',unit:'%',def:4},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+ ],
+ compute:v=>{
+   const n=Math.max(v.ageDepart-v.ageActuel,0.01);
+   const r=v.rendement/100,i=v.inflation/100;
+   const rm=Math.pow(1+r,1/12)-1, m=n*12;
+   const capitalNominal = rm===0? v.epargne*m : v.epargne*((Math.pow(1+rm,m)-1)/rm);
+   const totalVerse=v.epargne*m;
+   const interets=capitalNominal-totalVerse;
+   const capitalReel=capitalNominal/Math.pow(1+i,n);
+   return {primary:{label:'Capital en euros constants',value:fmtEUR(capitalReel)},
+     secondary:[
+       {label:'Capital nominal',value:fmtEUR(capitalNominal)},
+       {label:'Total versé',value:fmtEUR(totalVerse)},
+       {label:'Intérêts gagnés',value:fmtEUR(interets)},
+       {label:'Années restantes',value:fmtNum(n)+' ans'},
+     ]};
+ }},
+{id:'rente',num:'03',title:'Rente mensuelle',
+ subtitle:"Rente maximale que peut verser un capital, sans l'épuiser trop vite",
+ fields:[
+   {key:'capital',label:'Capital disponible',unit:'€',def:300000},
+   {key:'rendement',label:'Rendement du placement',unit:'%',def:4},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+   {key:'duree',label:'Durée souhaitée',unit:'ans',def:25},
+ ],
+ compute:v=>{
+   const r=v.rendement/100,i=v.inflation/100;
+   const rReel=(1+r)/(1+i)-1;
+   const rm=Math.pow(1+rReel,1/12)-1;
+   const m=v.duree*12;
+   const rente = Math.abs(rm)<1e-9? v.capital/m : (v.capital*rm)/(1-Math.pow(1+rm,-m));
+   return {primary:{label:'Rente mensuelle possible',value:fmtEUR(rente)},
+     secondary:[
+       {label:'Rendement réel annuel',value:fmtPct(rReel)},
+       {label:'Total perçu sur la période',value:fmtEUR(rente*m)},
+       {label:'Capital épuisé après',value:fmtNum(v.duree)+' ans'},
+     ]};
+ }},
+{id:'assurancevie',num:'04',title:'Assurance-vie',
+ subtitle:'Rendement réel, gain net de prélèvements sociaux, comparaison ETF',
+ fields:[
+   {key:'capitalInitial',label:'Capital initial',unit:'€',def:50000},
+   {key:'versement',label:'Versement mensuel',unit:'€',def:200},
+   {key:'rendement',label:'Rendement annuel',unit:'%',def:3.5},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+   {key:'duree',label:'Durée',unit:'ans',def:10},
+ ],
+ compute:v=>{
+   const r=v.rendement/100,i=v.inflation/100,n=v.duree;
+   const rm=Math.pow(1+r,1/12)-1, m=n*12;
+   const fvInit=v.capitalInitial*Math.pow(1+r,n);
+   const fvContrib = rm===0? v.versement*m : v.versement*((Math.pow(1+rm,m)-1)/rm);
+   const capitalFinal=fvInit+fvContrib;
+   const totalVerse=v.capitalInitial+v.versement*m;
+   const gainBrut=capitalFinal-totalVerse;
+   const gainNet=gainBrut*(1-0.172);
+   const capitalFinalNet=totalVerse+gainNet;
+   const rendementReel=(1+r)/(1+i)-1;
+   return {primary:{label:'Capital net (après prélèvements)',value:fmtEUR(capitalFinalNet)},
+     secondary:[
+       {label:'Gain brut',value:fmtEUR(gainBrut)},
+       {label:'Prélèvements sociaux (17,2 %)',value:fmtEUR(gainBrut-gainNet)},
+       {label:'Gain net',value:fmtEUR(gainNet)},
+       {label:'Rendement réel',value:fmtPct(rendementReel)},
+     ]};
+ }},
+{id:'etf',num:'05',title:'ETF / PEA',
+ subtitle:'Investissement programmé, plus-value, progression vers un objectif',
+ fields:[
+   {key:'versement',label:'Versement mensuel',unit:'€',def:300},
+   {key:'rendement',label:'Rendement annuel',unit:'%',def:7},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+   {key:'duree',label:'Durée',unit:'ans',def:20},
+   {key:'objectif',label:'Objectif à atteindre',unit:'€',def:150000},
+ ],
+ compute:v=>{
+   const r=v.rendement/100,i=v.inflation/100,n=v.duree;
+   const rm=Math.pow(1+r,1/12)-1, m=n*12;
+   const capitalFinal = rm===0? v.versement*m : v.versement*((Math.pow(1+rm,m)-1)/rm);
+   const totalVerse=v.versement*m;
+   const plusValue=capitalFinal-totalVerse;
+   const capitalReel=capitalFinal/Math.pow(1+i,n);
+   const perte=capitalFinal-capitalReel;
+   return {primary:{label:'Capital final',value:fmtEUR(capitalFinal)},
+     secondary:[
+       {label:'Montant investi',value:fmtEUR(totalVerse)},
+       {label:'Plus-value',value:fmtEUR(plusValue)},
+       {label:"Capital en pouvoir d'achat réel",value:fmtEUR(capitalReel)},
+       {label:"Perte de pouvoir d'achat",value:fmtEUR(perte)},
+       {label:"Progression vers l'objectif",value:fmtPct(v.objectif? capitalFinal/v.objectif : 0)},
+     ]};
+ }},
+{id:'emprunt',num:'06',title:'Emprunt immobilier',
+ subtitle:'Mensualité, coût du crédit, capital restant dû',
+ fields:[
+   {key:'montant',label:'Montant emprunté',unit:'€',def:250000},
+   {key:'taux',label:'Taux annuel',unit:'%',def:3.5},
+   {key:'duree',label:'Durée',unit:'ans',def:20},
+ ],
+ compute:v=>{
+   const tm=v.taux/100/12, N=v.duree*12;
+   const mensualite = tm===0? v.montant/N : (v.montant*tm)/(1-Math.pow(1+tm,-N));
+   const coutTotal=mensualite*N;
+   const coutInterets=coutTotal-v.montant;
+   const kYears=Math.min(5,v.duree), k=kYears*12;
+   const restant = tm===0? v.montant-mensualite*k
+     : v.montant*Math.pow(1+tm,k)-mensualite*((Math.pow(1+tm,k)-1)/tm);
+   return {primary:{label:'Mensualité',value:fmtEURc(mensualite)},
+     secondary:[
+       {label:'Coût total du crédit',value:fmtEUR(coutTotal)},
+       {label:'Coût total des intérêts',value:fmtEUR(coutInterets)},
+       {label:`Capital restant dû après ${fmtNum(kYears)} ans`,value:fmtEUR(Math.max(restant,0))},
+     ]};
+ }},
+{id:'locatif',num:'07',title:'LMNP / location nue',
+ subtitle:'Revenu net, impôt, cash-flow et rendement net locatif',
+ fields:[
+   {key:'prixBien',label:'Prix du bien',unit:'€',def:200000},
+   {key:'loyerAnnuel',label:'Loyer annuel',unit:'€',def:10800},
+   {key:'chargesAnnuelles',label:'Charges annuelles',unit:'€',def:1500},
+   {key:'tauxImposition',label:"Taux marginal d'imposition",unit:'%',def:30},
+   {key:'regime',label:'Régime fiscal',type:'select',def:'lmnp',options:[
+     {value:'lmnp',label:'LMNP (micro-BIC, abatt. 50 %)'},
+     {value:'nue',label:'Location nue (micro-foncier, abatt. 30 %)'},
+   ]},
+ ],
+ compute:v=>{
+   const abattement = v.regime==='lmnp'? 0.5 : 0.3;
+   const revenuNetAvantImpot = v.loyerAnnuel - v.chargesAnnuelles;
+   const baseImposable = Math.max(revenuNetAvantImpot,0)*(1-abattement);
+   const impot = baseImposable*(v.tauxImposition/100+0.172);
+   const cashFlow = revenuNetAvantImpot - impot;
+   const rendementNet = v.prixBien? cashFlow/v.prixBien : 0;
+   return {primary:{label:'Rendement net',value:fmtPct(rendementNet)},
+     secondary:[
+       {label:'Revenu net avant impôt',value:fmtEUR(revenuNetAvantImpot)},
+       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impot)},
+       {label:'Cash-flow annuel',value:fmtEUR(cashFlow)},
+       {label:'Cash-flow mensuel',value:fmtEUR(cashFlow/12)},
+     ]};
+ }},
+{id:'bilan',num:'08',title:'Bilan patrimonial',
+ subtitle:"Patrimoine brut, net, et répartition par classe d'actifs",
+ fields:[
+   {key:'liquidites',label:'Liquidités',unit:'€',def:15000},
+   {key:'pea',label:'PEA',unit:'€',def:40000},
+   {key:'assuranceVie',label:'Assurance-vie',unit:'€',def:80000},
+   {key:'immobilier',label:'Immobilier',unit:'€',def:300000},
+   {key:'scpi',label:'SCPI',unit:'€',def:20000},
+   {key:'obligations',label:'Obligations',unit:'€',def:10000},
+   {key:'dettes',label:'Dettes',unit:'€',def:90000},
+ ],
+ compute:v=>{
+   const assets=[['Liquidités',v.liquidites],['PEA',v.pea],['Assurance-vie',v.assuranceVie],
+     ['Immobilier',v.immobilier],['SCPI',v.scpi],['Obligations',v.obligations]];
+   const brut=assets.reduce((s,[,val])=>s+val,0);
+   const net=brut-v.dettes;
+   const repartition=assets.filter(([,val])=>val>0)
+     .map(([label,val])=>({label,pct:brut>0?val/brut:0,val}))
+     .sort((a,b)=>b.val-a.val);
+   return {primary:{label:'Patrimoine net',value:fmtEUR(net)},
+     secondary:[
+       {label:'Patrimoine brut',value:fmtEUR(brut)},
+       {label:'Dettes totales',value:fmtEUR(v.dettes)},
+     ],
+     repartition};
+ }},
+{id:'independance',num:'09',title:'Indépendance financière',
+ subtitle:'Le patrimoine peut-il durablement soutenir le niveau de vie ?',
+ fields:[
+   {key:'depenses',label:'Dépenses mensuelles',unit:'€',def:2500},
+   {key:'pension',label:'Pension de retraite',unit:'€',def:1800},
+   {key:'autresRevenus',label:'Autres revenus mensuels',unit:'€',def:300},
+   {key:'patrimoine',label:'Patrimoine financier',unit:'€',def:200000},
+   {key:'rendement',label:'Rendement espéré',unit:'%',def:4},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+ ],
+ compute:v=>{
+   const rReel=(1+v.rendement/100)/(1+v.inflation/100)-1;
+   const revenuPassif=(v.patrimoine*rReel)/12;
+   const revenuTotal=v.pension+v.autresRevenus+revenuPassif;
+   const solde=revenuTotal-v.depenses;
+   return {primary:{label:solde>=0?'Excédent mensuel':'Déficit mensuel',value:fmtEUR(solde),negative:solde<0},
+     secondary:[
+       {label:'Revenu passif potentiel',value:fmtEUR(revenuPassif)},
+       {label:'Revenu total mensuel',value:fmtEUR(revenuTotal)},
+       {label:'Rendement réel annuel',value:fmtPct(rReel)},
+       {label:'Statut',value:solde>=0?'Autonomie atteinte':'Autonomie non atteinte'},
+     ]};
+ }},
+];
+
+/* ---------------- storage ---------------- */
+const STORAGE_KEY = 'patrimoineHP.values.v1';
+function loadValues(){
+  let stored={};
+  try{ stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ stored={}; }
+  const values={};
+  MODULES.forEach(m=>{
+    values[m.id]={};
+    m.fields.forEach(f=>{
+      const saved = stored[m.id] ? stored[m.id][f.key] : undefined;
+      values[m.id][f.key] = saved!==undefined ? saved : f.def;
+    });
+  });
+  return values;
+}
+function saveValues(values){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(values)); }catch(e){}
+}
+let values = loadValues();
+let activeId = localStorage.getItem('patrimoineHP.activeModule') || MODULES[0].id;
+if(!MODULES.find(m=>m.id===activeId)) activeId = MODULES[0].id;
+
+/* ---------------- render ---------------- */
+const navEl = document.getElementById('nav');
+const mainEl = document.getElementById('main');
+const navOverlay = document.getElementById('navOverlay');
+
+function renderNav(){
+  navEl.innerHTML = MODULES.map(m=>`
+    <button class="navItem ${m.id===activeId?'active':''}" data-id="${m.id}">
+      <span class="num mono">${m.num}</span>
+      <span class="navLabel">${m.title}</span>
+    </button>`).join('');
+  navEl.querySelectorAll('.navItem').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      activeId = btn.dataset.id;
+      localStorage.setItem('patrimoineHP.activeModule', activeId);
+      closeNav();
+      renderNav();
+      renderMain();
+    });
+  });
+}
+
+function fieldHTML(m,f){
+  const val = values[m.id][f.key];
+  if(f.type==='select'){
+    return `<div class="field">
+      <label>${f.label}</label>
+      <select data-key="${f.key}">
+        ${f.options.map(o=>`<option value="${o.value}" ${o.value===val?'selected':''}>${o.label}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  return `<div class="field">
+    <label>${f.label} ${f.unit?`<span class="unit">· ${f.unit}</span>`:''}</label>
+    <input type="number" data-key="${f.key}" value="${val}"/>
+  </div>`;
+}
+
+function renderMain(){
+  const m = MODULES.find(mm=>mm.id===activeId);
+  const result = m.compute(values[m.id]);
+  mainEl.innerHTML = `
+    <div class="moduleHead"><span class="num mono">${m.num}</span><h2>${m.title}</h2></div>
+    <p class="subtitle">${m.subtitle}</p>
+
+    <div class="lcdFrame">
+      <div class="lcdScreen">
+        <div class="lcdTop"><span>Solver ${m.num}</span><span>HP · 19BII+</span></div>
+        <div class="lcdLabel">${result.primary.label}</div>
+        <div class="lcdValue mono ${result.primary.negative?'negative':''}">${result.primary.value}</div>
+      </div>
+    </div>
+
+    <div class="fields">
+      ${m.fields.map(f=>fieldHTML(m,f)).join('')}
+    </div>
+
+    <div class="sectionLabel">Détail</div>
+    <div class="resultsTable">
+      ${result.secondary.map(r=>`<div class="row"><span class="rlabel">${r.label}</span><span class="rvalue mono">${r.value}</span></div>`).join('')}
+    </div>
+
+    ${result.repartition ? `
+      <div class="sectionLabel">Répartition par classe d'actifs</div>
+      <div style="margin-bottom:20px">
+        ${result.repartition.map(it=>`
+          <div class="repItem">
+            <div class="repTop"><span>${it.label}</span><span class="mono">${fmtPct(it.pct)}</span></div>
+            <div class="repBar"><div class="repFill" style="width:${Math.min(it.pct*100,100)}%"></div></div>
+          </div>`).join('')}
+      </div>` : ''}
+
+    <p class="footnote">Estimation pédagogique à titre indicatif — ne remplace pas un conseil personnalisé. Vos données restent sur cet appareil (stockage local).</p>
+  `;
+
+  mainEl.querySelectorAll('[data-key]').forEach(el=>{
+    el.addEventListener('input',()=>{
+      const key = el.dataset.key;
+      const raw = el.value;
+      values[m.id][key] = el.tagName==='SELECT' ? raw : (raw===''?0:Number(raw));
+      saveValues(values);
+      // recompute + update display without full re-render (keeps focus)
+      const res = m.compute(values[m.id]);
+      const lcdLabel = mainEl.querySelector('.lcdLabel');
+      const lcdValue = mainEl.querySelector('.lcdValue');
+      lcdLabel.textContent = res.primary.label;
+      lcdValue.textContent = res.primary.value;
+      lcdValue.classList.toggle('negative', !!res.primary.negative);
+      const rows = mainEl.querySelectorAll('.resultsTable .row');
+      res.secondary.forEach((r,idx)=>{
+        if(rows[idx]){
+          rows[idx].querySelector('.rlabel').textContent = r.label;
+          rows[idx].querySelector('.rvalue').textContent = r.value;
+        }
+      });
+      if(res.repartition){
+        const items = mainEl.querySelectorAll('.repItem');
+        res.repartition.forEach((it,idx)=>{
+          if(items[idx]){
+            items[idx].querySelector('.repTop span').textContent = it.label;
+            items[idx].querySelector('.repTop .mono').textContent = fmtPct(it.pct);
+            items[idx].querySelector('.repFill').style.width = Math.min(it.pct*100,100)+'%';
+          }
+        });
+      }
+    });
+  });
+}
+
+/* ---------------- nav toggle (mobile) ---------------- */
+function openNav(){ navEl.classList.add('open'); navOverlay.classList.add('open'); }
+function closeNav(){ navEl.classList.remove('open'); navOverlay.classList.remove('open'); }
+document.getElementById('menuBtn').addEventListener('click', ()=>{
+  navEl.classList.contains('open') ? closeNav() : openNav();
+});
+navOverlay.addEventListener('click', closeNav);
+
+renderNav();
+renderMain();
+
+/* ---------------- service worker + update banner ---------------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.addEventListener('updatefound', ()=>{
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', ()=>{
+          if(newWorker.state==='installed' && navigator.serviceWorker.controller){
+            document.getElementById('updateBanner').style.display='flex';
+          }
+        });
+      });
+    });
+  });
+  document.getElementById('updateBtn').addEventListener('click', ()=>{
+    navigator.serviceWorker.getRegistration().then(reg=>{
+      if(reg && reg.waiting){ reg.waiting.postMessage('SKIP_WAITING'); }
+      window.location.reload();
+    });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    window.location.reload();
+  });
+}
+</script>
+</body>
+</html>

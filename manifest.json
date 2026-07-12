@@ -1,0 +1,14 @@
+{
+  "name": "Patrimoine HP",
+  "short_name": "Patrimoine",
+  "description": "Bibliothèque de solveurs patrimoniaux façon HP-19BII+",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1526",
+  "theme_color": "#0d1526",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
