@@ -253,13 +253,23 @@ const MODULES = [
    {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
    {key:'duree',label:'Durée',unit:'ans',def:10},
    {key:'foyer',label:'Foyer fiscal',type:'select',def:'seul',options:[
-     {value:'seul',label:'Personne seule (abatt. 4 600 €)'},
-     {value:'couple',label:"Couple, imposition commune (abatt. 9 200 €)"},
+     {value:'seul',label:'Personne seule'},
+     {value:'couple',label:"Couple, imposition commune"},
    ]},
+   {key:'abattementSeul',label:'Abattement annuel (personne seule)',unit:'€',def:4600,
+     hint:"Applicable après 8 ans — modifiable si la loi change."},
+   {key:'abattementCouple',label:'Abattement annuel (couple)',unit:'€',def:9200,
+     hint:"Applicable après 8 ans — modifiable si la loi change."},
    {key:'tmi',label:"Taux marginal d'imposition (TMI)",unit:'%',def:30,
      hint:"Votre vrai taux (avis d'imposition, ou barème de votre pays de résidence fiscale)."},
+   {key:'tauxPFU',label:'PFU taux plein',unit:'%',def:12.8,
+     hint:"Applicable avant 8 ans, ou après 8 ans au-delà du seuil de primes — modifiable si la loi change."},
+   {key:'tauxPFUReduit',label:'PFU taux réduit (>8 ans)',unit:'%',def:7.5,
+     hint:"Applicable après 8 ans, dans la limite du seuil de primes ci-dessous."},
+   {key:'seuilPrimes',label:'Seuil de primes pour le taux réduit',unit:'€',def:150000,
+     hint:"Au-delà, le taux plein du PFU s'applique même après 8 ans."},
    {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:17.2,
-     hint:"Taux CSG/CRDS actuel — modifiable si la loi change ou hors de France."},
+     hint:"L'assurance-vie reste à 17,2 % (non concernée par la hausse à 18,6 % de 2026) — à ajuster si besoin."},
  ],
  compute:v=>{
    const r=v.rendement/100, g=v.fraisGestion/100, i=v.inflation/100, n=v.duree;
@@ -280,9 +290,9 @@ const MODULES = [
    const tmi = v.tmi/100;
    const tauxPS = v.tauxPS/100;
 
-   const abattement = n>=8 ? (v.foyer==='couple'?9200:4600) : 0;
+   const abattement = n>=8 ? (v.foyer==='couple'?v.abattementCouple:v.abattementSeul) : 0;
    const gainImposable = Math.max(gainBrut-abattement,0);
-   const tauxPFU = n>=8 ? (totalVerse<=150000?0.075:0.128) : 0.128;
+   const tauxPFU = n>=8 ? (totalVerse<=v.seuilPrimes? v.tauxPFUReduit/100 : v.tauxPFU/100) : v.tauxPFU/100;
    const prelevSociaux = gainBrut*tauxPS;
    const irPFU = gainImposable*tauxPFU;
    const irBareme = gainImposable*tmi;
@@ -299,6 +309,7 @@ const MODULES = [
        {label:'Gain brut',value:fmtEUR(gainBrut)},
        {label:`Abattement (>8 ans)`,value:fmtEUR(abattement)},
        {label:'Gain imposable',value:fmtEUR(gainImposable)},
+       {label:'Taux PFU appliqué',value:fmtPct(tauxPFU)},
        {label:'Taux marginal (TMI)',value:fmtPct(tmi)},
        {label:'Option la plus avantageuse',value:optionRetenue},
        {label:"Impôt sur le revenu",value:fmtEUR(irRetenu)},
@@ -320,8 +331,10 @@ const MODULES = [
    ]},
    {key:'tmi',label:"Taux marginal d'imposition (TMI)",unit:'%',def:30,
      hint:"Votre vrai taux (avis d'imposition, ou barème de votre pays de résidence fiscale)."},
-   {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:17.2,
-     hint:"Taux CSG/CRDS actuel — modifiable si la loi change ou hors de France."},
+   {key:'tauxPFU',label:'PFU (prélèvement forfaitaire unique)',unit:'%',def:12.8,
+     hint:"Taux plein du PFU — modifiable si la loi change."},
+   {key:'tauxPS',label:'Prélèvements sociaux',unit:'%',def:18.6,
+     hint:"Plus-values mobilières et PEA : 18,6 % depuis 2026 (contre 17,2 % avant) — à ajuster si besoin."},
  ],
  compute:v=>{
    const r=v.rendement/100,i=v.inflation/100,n=v.duree;
@@ -343,10 +356,10 @@ const MODULES = [
      irRetenu = 0;
      regime = "PEA exonéré d'IR (retrait après 5 ans)";
    } else {
-     const irPFU = plusValue*0.128;
+     const irPFU = plusValue*(v.tauxPFU/100);
      const irBareme = plusValue*tmi;
      irRetenu = Math.min(irPFU, irBareme);
-     const base = irPFU<=irBareme? 'PFU 12,8 %' : 'Barème progressif';
+     const base = irPFU<=irBareme? `PFU ${fmtPct(v.tauxPFU/100)}` : 'Barème progressif';
      regime = isPEA? `${base} (retrait avant 5 ans)` : base;
    }
    const impotRetenu = irRetenu+prelevSociaux;
