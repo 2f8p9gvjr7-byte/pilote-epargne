@@ -18,7 +18,7 @@
     --accent-dim:rgba(245,166,35,0.28);
     --accent-faint:rgba(245,166,35,0.12);
     --green:#2ecc71;
-    --lcd-bg:#08130d;
+    --lcd-bg:#15311f;
     --text:#ffffff;
     --text-dim:rgba(255,255,255,0.65);
     --text-faint:rgba(255,255,255,0.35);
@@ -34,7 +34,8 @@
 
   header{
     display:flex;align-items:center;justify-content:space-between;
-    padding:16px 20px;border-bottom:1px solid var(--accent-faint);
+    padding:calc(16px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 16px max(20px, env(safe-area-inset-left));
+    border-bottom:1px solid var(--accent-faint);
     background:var(--bg2);
     position:sticky;top:0;z-index:5;
   }
@@ -74,14 +75,14 @@
   }
   .lcdScreen{
     background:var(--lcd-bg);border-radius:6px;padding:18px 20px;
-    box-shadow:inset 0 2px 10px rgba(0,0,0,.55);position:relative;overflow:hidden;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.3);position:relative;overflow:hidden;
   }
   .lcdScreen::before{
-    content:"";position:absolute;inset:0;opacity:.06;pointer-events:none;
+    content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;
     background-image:repeating-linear-gradient(180deg,#fff 0px,#fff 1px,transparent 1px,transparent 3px);
   }
-  .lcdTop{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(46,204,113,.55);}
-  .lcdLabel{margin-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(46,204,113,.55);}
+  .lcdTop{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(146,255,187,.7);}
+  .lcdLabel{margin-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(146,255,187,.7);}
   .lcdValue{margin-top:4px;font-size:30px;font-weight:600;color:var(--green);word-break:break-all;}
   .lcdValue.negative{color:#e3a98f;}
 
@@ -89,6 +90,7 @@
   @media(max-width:520px){.fields{grid-template-columns:1fr;}}
   .field label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
   .field label .unit{color:var(--accent);}
+  .field .fieldHint{display:block;font-size:11px;color:var(--text-faint);margin-top:5px;font-style:italic;}
   .field input, .field select{
     width:100%;padding:10px 12px;border-radius:5px;border:1px solid var(--accent-dim);
     background:var(--bg);color:var(--text);font-size:14px;
@@ -113,7 +115,8 @@
   #updateBanner{
     display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;
     background:var(--card);border-top:1px solid var(--accent);
-    padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    align-items:center;justify-content:space-between;gap:12px;
   }
   #updateBanner span{font-size:13px;color:var(--text);}
   #updateBanner button{
@@ -128,7 +131,7 @@
     nav{position:static;}
   }
   @media(max-width:859px){
-    nav{position:fixed;top:0;bottom:0;left:0;z-index:10;transform:translateX(-100%);transition:transform .2s ease;}
+    nav{position:fixed;top:0;bottom:0;left:0;z-index:10;transform:translateX(-100%);transition:transform .2s ease;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
     nav.open{transform:translateX(0);}
     #navOverlay.open{display:block;}
     main{max-width:none;}
@@ -162,6 +165,13 @@ const fmtEUR = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{style:'currency',c
 const fmtEURc = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:2});
 const fmtPct = v => ((isFinite(v)?v*100:0).toLocaleString('fr-FR',{maximumFractionDigits:2}))+' %';
 const fmtNum = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{maximumFractionDigits:1});
+
+/* ---------------- shared: taux marginal d'imposition (barème 2026) ---------------- */
+function tmiFromQF(qf){
+  const bareme=[[181917,0.45],[84577,0.41],[29579,0.30],[11600,0.11],[0,0]];
+  for(const [seuil,taux] of bareme){ if(qf>seuil) return taux; }
+  return 0;
+}
 
 /* ---------------- modules ---------------- */
 const MODULES = [
@@ -240,72 +250,137 @@ const MODULES = [
      ]};
  }},
 {id:'assurancevie',num:'04',title:'Assurance-vie',
- subtitle:'Rendement réel, gain net de prélèvements sociaux, comparaison ETF',
+ subtitle:"Frais, fiscalité du rachat (PFU ou barème), abattement après 8 ans",
  fields:[
    {key:'capitalInitial',label:'Capital initial',unit:'€',def:50000},
    {key:'versement',label:'Versement mensuel',unit:'€',def:200},
-   {key:'rendement',label:'Rendement annuel',unit:'%',def:3.5},
+   {key:'rendement',label:'Rendement brut annuel',unit:'%',def:3.5},
+   {key:'fraisGestion',label:'Frais de gestion annuels',unit:'%',def:0.6},
+   {key:'fraisEntree',label:"Frais d'entrée / commission",unit:'%',def:1},
    {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
    {key:'duree',label:'Durée',unit:'ans',def:10},
+   {key:'foyer',label:'Foyer fiscal',type:'select',def:'seul',options:[
+     {value:'seul',label:'Personne seule (abatt. 4 600 €)'},
+     {value:'couple',label:"Couple, imposition commune (abatt. 9 200 €)"},
+   ]},
+   {key:'revenuImposable',label:'Revenu net imposable du foyer',unit:'€/an',def:40000,hint:'À remplacer par votre revenu réel (avis d\u2019imposition) — détermine votre TMI.'},
+   {key:'nombreParts',label:'Nombre de parts fiscales',unit:'parts',def:2,hint:'Quotient familial : voir votre avis d\u2019imposition.'},
  ],
  compute:v=>{
-   const r=v.rendement/100,i=v.inflation/100,n=v.duree;
-   const rm=Math.pow(1+r,1/12)-1, m=n*12;
-   const fvInit=v.capitalInitial*Math.pow(1+r,n);
-   const fvContrib = rm===0? v.versement*m : v.versement*((Math.pow(1+rm,m)-1)/rm);
-   const capitalFinal=fvInit+fvContrib;
-   const totalVerse=v.capitalInitial+v.versement*m;
-   const gainBrut=capitalFinal-totalVerse;
-   const gainNet=gainBrut*(1-0.172);
-   const capitalFinalNet=totalVerse+gainNet;
-   const rendementReel=(1+r)/(1+i)-1;
-   return {primary:{label:'Capital net (après prélèvements)',value:fmtEUR(capitalFinalNet)},
+   const r=v.rendement/100, g=v.fraisGestion/100, i=v.inflation/100, n=v.duree;
+   const rNet = Math.max(r-g,-0.99);
+   const entree = v.fraisEntree/100;
+   const capitalInvesti0 = v.capitalInitial*(1-entree);
+   const versementInvesti = v.versement*(1-entree);
+   const rm=Math.pow(1+rNet,1/12)-1, m=n*12;
+   const fvInit = capitalInvesti0*Math.pow(1+rNet,n);
+   const fvContrib = rm===0? versementInvesti*m : versementInvesti*((Math.pow(1+rm,m)-1)/rm);
+   const capitalFinal = fvInit+fvContrib;
+   const totalVerse = v.capitalInitial+v.versement*m;
+   const totalInvesti = capitalInvesti0 + versementInvesti*m;
+   const fraisEntreePreleves = totalVerse-totalInvesti;
+   const gainBrut = Math.max(capitalFinal-totalVerse,0);
+
+   // barème progressif : taux marginal via quotient familial
+   const parts = v.nombreParts>0? v.nombreParts : 1;
+   const qf = v.revenuImposable/parts;
+   const tmi = tmiFromQF(qf);
+
+   const abattement = n>=8 ? (v.foyer==='couple'?9200:4600) : 0;
+   const gainImposable = Math.max(gainBrut-abattement,0);
+   const tauxPFU = n>=8 ? (totalVerse<=150000?0.075:0.128) : 0.128;
+   const prelevSociaux = gainBrut*0.172;
+   const impotPFU = gainImposable*tauxPFU + prelevSociaux;
+   const impotBareme = gainImposable*tmi + prelevSociaux;
+   const impotRetenu = Math.min(impotPFU,impotBareme);
+   const optionRetenue = impotPFU<=impotBareme? 'Prélèvement forfaitaire (PFU)':'Barème progressif';
+   const gainNet = gainBrut-impotRetenu;
+   const capitalFinalNet = totalVerse+gainNet;
+
+   return {primary:{label:'Capital net (après frais et impôt)',value:fmtEUR(capitalFinalNet)},
      secondary:[
+       {label:"Frais d'entrée prélevés",value:fmtEUR(fraisEntreePreleves)},
+       {label:'Rendement net de frais de gestion',value:fmtPct(rNet)},
        {label:'Gain brut',value:fmtEUR(gainBrut)},
-       {label:'Prélèvements sociaux (17,2 %)',value:fmtEUR(gainBrut-gainNet)},
+       {label:`Abattement (>8 ans)`,value:fmtEUR(abattement)},
+       {label:'Gain imposable',value:fmtEUR(gainImposable)},
+       {label:'Taux marginal (TMI)',value:fmtPct(tmi)},
+       {label:'Option la plus avantageuse',value:optionRetenue},
+       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impotRetenu)},
        {label:'Gain net',value:fmtEUR(gainNet)},
-       {label:'Rendement réel',value:fmtPct(rendementReel)},
      ]};
  }},
-{id:'etf',num:'05',title:'ETF / PEA',
- subtitle:'Investissement programmé, plus-value, progression vers un objectif',
+{id:'etf',num:'05',title:'ETF / PEA / Compte-titres',
+ subtitle:"Investissement programmé — la fiscalité dépend de l'enveloppe utilisée",
  fields:[
    {key:'versement',label:'Versement mensuel',unit:'€',def:300},
    {key:'rendement',label:'Rendement annuel',unit:'%',def:7},
    {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
    {key:'duree',label:'Durée',unit:'ans',def:20},
    {key:'objectif',label:'Objectif à atteindre',unit:'€',def:150000},
+   {key:'enveloppe',label:'Enveloppe',type:'select',def:'pea',options:[
+     {value:'pea',label:"PEA"},
+     {value:'ct',label:'Compte-titres ordinaire (actions, ETF hors PEA)'},
+   ]},
+   {key:'revenuImposable',label:'Revenu net imposable du foyer',unit:'€/an',def:40000,hint:'À remplacer par votre revenu réel (avis d\u2019imposition) — détermine votre TMI.'},
+   {key:'nombreParts',label:'Nombre de parts fiscales',unit:'parts',def:2,hint:'Quotient familial : voir votre avis d\u2019imposition.'},
  ],
  compute:v=>{
    const r=v.rendement/100,i=v.inflation/100,n=v.duree;
    const rm=Math.pow(1+r,1/12)-1, m=n*12;
    const capitalFinal = rm===0? v.versement*m : v.versement*((Math.pow(1+rm,m)-1)/rm);
    const totalVerse=v.versement*m;
-   const plusValue=capitalFinal-totalVerse;
+   const plusValue=Math.max(capitalFinal-totalVerse,0);
    const capitalReel=capitalFinal/Math.pow(1+i,n);
    const perte=capitalFinal-capitalReel;
-   return {primary:{label:'Capital final',value:fmtEUR(capitalFinal)},
+
+   const parts = v.nombreParts>0? v.nombreParts : 1;
+   const tmi = tmiFromQF(v.revenuImposable/parts);
+   const prelevSociaux = plusValue*0.172;
+   const isPEA = v.enveloppe==='pea';
+   const peaExonere = isPEA && n>=5;
+
+   let impotRetenu, regime;
+   if(peaExonere){
+     impotRetenu = prelevSociaux;
+     regime = "PEA exonéré d'IR (retrait après 5 ans)";
+   } else {
+     const impotPFU = plusValue*0.128 + prelevSociaux;
+     const impotBareme = plusValue*tmi + prelevSociaux;
+     impotRetenu = Math.min(impotPFU, impotBareme);
+     const base = impotPFU<=impotBareme? 'PFU 12,8 % + PS' : 'Barème progressif + PS';
+     regime = isPEA? `${base} (retrait avant 5 ans)` : base;
+   }
+   const gainNet = plusValue - impotRetenu;
+   const capitalFinalNet = totalVerse + gainNet;
+
+   return {primary:{label:'Capital net (après impôt)',value:fmtEUR(capitalFinalNet)},
      secondary:[
        {label:'Montant investi',value:fmtEUR(totalVerse)},
-       {label:'Plus-value',value:fmtEUR(plusValue)},
-       {label:"Capital en pouvoir d'achat réel",value:fmtEUR(capitalReel)},
-       {label:"Perte de pouvoir d'achat",value:fmtEUR(perte)},
-       {label:"Progression vers l'objectif",value:fmtPct(v.objectif? capitalFinal/v.objectif : 0)},
+       {label:'Plus-value brute',value:fmtEUR(plusValue)},
+       {label:'Régime fiscal retenu',value:regime},
+       {label:'Taux marginal (TMI)',value:fmtPct(tmi)},
+       {label:'Impôt + prélèvements sociaux',value:fmtEUR(impotRetenu)},
+       {label:'Gain net',value:fmtEUR(gainNet)},
+       {label:"Capital brut en pouvoir d'achat réel",value:fmtEUR(capitalReel)},
+       {label:"Perte de pouvoir d'achat (inflation)",value:fmtEUR(perte)},
+       {label:"Progression vers l'objectif (brut)",value:fmtPct(v.objectif? capitalFinal/v.objectif : 0)},
      ]};
  }},
 {id:'emprunt',num:'06',title:'Emprunt immobilier',
- subtitle:'Mensualité, coût du crédit, capital restant dû',
+ subtitle:'Mensualité, coût du crédit, capital restant dû à la date de ton choix',
  fields:[
    {key:'montant',label:'Montant emprunté',unit:'€',def:250000},
    {key:'taux',label:'Taux annuel',unit:'%',def:3.5},
    {key:'duree',label:'Durée',unit:'ans',def:20},
+   {key:'anneeVerification',label:'Vérifier le capital restant après',unit:'ans',def:5},
  ],
  compute:v=>{
    const tm=v.taux/100/12, N=v.duree*12;
    const mensualite = tm===0? v.montant/N : (v.montant*tm)/(1-Math.pow(1+tm,-N));
    const coutTotal=mensualite*N;
    const coutInterets=coutTotal-v.montant;
-   const kYears=Math.min(5,v.duree), k=kYears*12;
+   const kYears=Math.min(Math.max(v.anneeVerification,0),v.duree), k=kYears*12;
    const restant = tm===0? v.montant-mensualite*k
      : v.montant*Math.pow(1+tm,k)-mensualite*((Math.pow(1+tm,k)-1)/tm);
    return {primary:{label:'Mensualité',value:fmtEURc(mensualite)},
@@ -450,6 +525,7 @@ function fieldHTML(m,f){
   return `<div class="field">
     <label>${f.label} ${f.unit?`<span class="unit">· ${f.unit}</span>`:''}</label>
     <input type="number" data-key="${f.key}" value="${val}"/>
+    ${f.hint?`<span class="fieldHint">${f.hint}</span>`:''}
   </div>`;
 }
 
