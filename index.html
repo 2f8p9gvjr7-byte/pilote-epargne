@@ -166,13 +166,6 @@ const fmtEURc = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{style:'currency',
 const fmtPct = v => ((isFinite(v)?v*100:0).toLocaleString('fr-FR',{maximumFractionDigits:2}))+' %';
 const fmtNum = v => (isFinite(v)?v:0).toLocaleString('fr-FR',{maximumFractionDigits:1});
 
-/* ---------------- shared: taux marginal d'imposition (barème 2026) ---------------- */
-function tmiFromQF(qf){
-  const bareme=[[181917,0.45],[84577,0.41],[29579,0.30],[11600,0.11],[0,0]];
-  for(const [seuil,taux] of bareme){ if(qf>seuil) return taux; }
-  return 0;
-}
-
 /* ---------------- modules ---------------- */
 const MODULES = [
 {id:'epargne',num:'01',title:"Capitalisation d'une épargne",
@@ -263,8 +256,15 @@ const MODULES = [
      {value:'seul',label:'Personne seule (abatt. 4 600 €)'},
      {value:'couple',label:"Couple, imposition commune (abatt. 9 200 €)"},
    ]},
-   {key:'revenuImposable',label:'Revenu net imposable du foyer',unit:'€/an',def:40000,hint:'À remplacer par votre revenu réel (avis d\u2019imposition) — détermine votre TMI.'},
-   {key:'nombreParts',label:'Nombre de parts fiscales',unit:'parts',def:2,hint:'Quotient familial : voir votre avis d\u2019imposition.'},
+   {key:'tmi',label:"Taux marginal d'imposition (TMI)",type:'select',def:'0.30',
+     hint:"Indiqué sur la dernière page de votre avis d'imposition.",
+     options:[
+       {value:'0',label:'0 %'},
+       {value:'0.11',label:'11 %'},
+       {value:'0.30',label:'30 %'},
+       {value:'0.41',label:'41 %'},
+       {value:'0.45',label:'45 %'},
+     ]},
  ],
  compute:v=>{
    const r=v.rendement/100, g=v.fraisGestion/100, i=v.inflation/100, n=v.duree;
@@ -282,9 +282,7 @@ const MODULES = [
    const gainBrut = Math.max(capitalFinal-totalVerse,0);
 
    // barème progressif : taux marginal via quotient familial
-   const parts = v.nombreParts>0? v.nombreParts : 1;
-   const qf = v.revenuImposable/parts;
-   const tmi = tmiFromQF(qf);
+   const tmi = parseFloat(v.tmi);
 
    const abattement = n>=8 ? (v.foyer==='couple'?9200:4600) : 0;
    const gainImposable = Math.max(gainBrut-abattement,0);
@@ -322,8 +320,15 @@ const MODULES = [
      {value:'pea',label:"PEA"},
      {value:'ct',label:'Compte-titres ordinaire (actions, ETF hors PEA)'},
    ]},
-   {key:'revenuImposable',label:'Revenu net imposable du foyer',unit:'€/an',def:40000,hint:'À remplacer par votre revenu réel (avis d\u2019imposition) — détermine votre TMI.'},
-   {key:'nombreParts',label:'Nombre de parts fiscales',unit:'parts',def:2,hint:'Quotient familial : voir votre avis d\u2019imposition.'},
+   {key:'tmi',label:"Taux marginal d'imposition (TMI)",type:'select',def:'0.30',
+     hint:"Indiqué sur la dernière page de votre avis d'imposition.",
+     options:[
+       {value:'0',label:'0 %'},
+       {value:'0.11',label:'11 %'},
+       {value:'0.30',label:'30 %'},
+       {value:'0.41',label:'41 %'},
+       {value:'0.45',label:'45 %'},
+     ]},
  ],
  compute:v=>{
    const r=v.rendement/100,i=v.inflation/100,n=v.duree;
@@ -334,8 +339,7 @@ const MODULES = [
    const capitalReel=capitalFinal/Math.pow(1+i,n);
    const perte=capitalFinal-capitalReel;
 
-   const parts = v.nombreParts>0? v.nombreParts : 1;
-   const tmi = tmiFromQF(v.revenuImposable/parts);
+   const tmi = parseFloat(v.tmi);
    const prelevSociaux = plusValue*0.172;
    const isPEA = v.enveloppe==='pea';
    const peaExonere = isPEA && n>=5;
@@ -520,6 +524,7 @@ function fieldHTML(m,f){
       <select data-key="${f.key}">
         ${f.options.map(o=>`<option value="${o.value}" ${o.value===val?'selected':''}>${o.label}</option>`).join('')}
       </select>
+      ${f.hint?`<span class="fieldHint">${f.hint}</span>`:''}
     </div>`;
   }
   return `<div class="field">
