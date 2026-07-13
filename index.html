@@ -484,6 +484,54 @@ const MODULES = [
        {label:'Statut',value:solde>=0?'Autonomie atteinte':'Autonomie non atteinte'},
      ]};
  }},
+{id:'objectifretraite',num:'10',title:"Objectif retraite : épargne nécessaire",
+ subtitle:"Combien épargner chaque mois pour un revenu cible en euros constants à la retraite",
+ fields:[
+   {key:'ageActuel',label:'Âge actuel',unit:'ans',def:55},
+   {key:'ageDepart',label:'Âge de départ',unit:'ans',def:65},
+   {key:'capitalDejaConstitue',label:'Capital déjà constitué',unit:'€',def:20000},
+   {key:'revenuMensuelSouhaite',label:"Revenu mensuel souhaité (euros constants d'aujourd'hui)",unit:'€',def:1000},
+   {key:'dureeRente',label:'Durée de versement de la rente',unit:'ans',def:25},
+   {key:'rendementBrut',label:'Rendement brut annuel',unit:'%',def:5},
+   {key:'fraisGestion',label:'Frais de gestion annuels',unit:'%',def:0.6},
+   {key:'fraisEntree',label:"Frais d'entrée / commission sur versements",unit:'%',def:1},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+ ],
+ compute:v=>{
+   const n1 = Math.max(v.ageDepart-v.ageActuel, 0.01);
+   const m1 = n1*12;
+   const rNet = Math.max(v.rendementBrut/100 - v.fraisGestion/100, -0.99);
+   const i = v.inflation/100;
+   const entree = v.fraisEntree/100;
+   const rm = Math.pow(1+rNet,1/12)-1;
+
+   // capital nécessaire au départ à la retraite, via une rente réelle (même méthode que le module 03)
+   const rReel = (1+rNet)/(1+i) - 1;
+   const rmReel = Math.pow(1+rReel,1/12)-1;
+   const m2 = v.dureeRente*12;
+   const R1 = v.revenuMensuelSouhaite*Math.pow(1+i,n1); // équivalent nominal du revenu souhaité, au départ en retraite
+   const capitalNecessaire = Math.abs(rmReel)<1e-9 ? R1*m2 : R1*(1-Math.pow(1+rmReel,-m2))/rmReel;
+
+   // valorisation du capital déjà constitué
+   const capitalInvesti0 = v.capitalDejaConstitue*(1-entree);
+   const fvExistant = capitalInvesti0*Math.pow(1+rNet,n1);
+
+   const reste = Math.max(capitalNecessaire - fvExistant, 0);
+   const annuiteFacteur = rm===0 ? m1*(1-entree) : (1-entree)*((Math.pow(1+rm,m1)-1)/rm);
+   const versementRequis = annuiteFacteur>0 ? reste/annuiteFacteur : 0;
+   const dejaSuffisant = capitalNecessaire<=fvExistant;
+
+   return {primary:{label:'Versement mensuel nécessaire',value:fmtEUR(versementRequis)},
+     secondary:[
+       {label:'Capital nécessaire au départ en retraite',value:fmtEUR(capitalNecessaire)},
+       {label:"Revenu visé (euros constants d'aujourd'hui)",value:fmtEUR(v.revenuMensuelSouhaite)},
+       {label:'Équivalent nominal au départ en retraite',value:fmtEUR(R1)},
+       {label:'Capital déjà constitué, valorisé à la retraite',value:fmtEUR(fvExistant)},
+       {label:'Années avant la retraite',value:fmtNum(n1)+' ans'},
+       {label:'Rendement net de frais',value:fmtPct(rNet)},
+       {label:'Statut',value:dejaSuffisant? 'Capital déjà suffisant' : 'Effort supplémentaire nécessaire'},
+     ]};
+ }},
 ];
 
 /* ---------------- storage ---------------- */
