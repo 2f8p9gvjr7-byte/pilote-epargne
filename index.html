@@ -532,6 +532,64 @@ const MODULES = [
        {label:'Statut',value:dejaSuffisant? 'Capital déjà suffisant' : 'Effort supplémentaire nécessaire'},
      ]};
  }},
+{id:'objectifretraiteindexe',num:'11',title:"Objectif retraite : épargne indexée",
+ subtitle:"Même objectif que le module 10, mais le versement augmente chaque année selon un taux que vous fixez",
+ fields:[
+   {key:'ageActuel',label:'Âge actuel',unit:'ans',def:55},
+   {key:'ageDepart',label:'Âge de départ',unit:'ans',def:65},
+   {key:'capitalDejaConstitue',label:'Capital déjà constitué',unit:'€',def:20000},
+   {key:'revenuMensuelSouhaite',label:"Revenu mensuel souhaité (euros constants d'aujourd'hui)",unit:'€',def:1000},
+   {key:'dureeRente',label:'Durée de versement de la rente',unit:'ans',def:25},
+   {key:'rendementBrut',label:'Rendement brut annuel',unit:'%',def:5},
+   {key:'fraisGestion',label:'Frais de gestion annuels',unit:'%',def:0.6},
+   {key:'fraisEntree',label:"Frais d'entrée / commission sur versements",unit:'%',def:1},
+   {key:'inflation',label:'Inflation annuelle',unit:'%',def:2},
+   {key:'indexation',label:'Indexation annuelle du versement',unit:'%',def:2,
+     hint:"Taux auquel vous augmentez vous-même votre versement chaque année — indépendant de l'inflation, c'est vous qui le fixez."},
+ ],
+ compute:v=>{
+   const n1 = Math.max(v.ageDepart-v.ageActuel, 0.01);
+   const m1 = Math.round(n1*12);
+   const rNet = Math.max(v.rendementBrut/100 - v.fraisGestion/100, -0.99);
+   const i = v.inflation/100;
+   const entree = v.fraisEntree/100;
+   const g = v.indexation/100;
+   const rm = Math.pow(1+rNet,1/12)-1;
+
+   // capital nécessaire au départ à la retraite (identique au module 10)
+   const rReel = (1+rNet)/(1+i) - 1;
+   const rmReel = Math.pow(1+rReel,1/12)-1;
+   const m2 = v.dureeRente*12;
+   const R1 = v.revenuMensuelSouhaite*Math.pow(1+i,n1);
+   const capitalNecessaire = Math.abs(rmReel)<1e-9 ? R1*m2 : R1*(1-Math.pow(1+rmReel,-m2))/rmReel;
+
+   const capitalInvesti0 = v.capitalDejaConstitue*(1-entree);
+   const fvExistant = capitalInvesti0*Math.pow(1+rNet,n1);
+   const reste = Math.max(capitalNecessaire - fvExistant, 0);
+
+   // simulation mois par mois d'un versement unitaire (1€) qui augmente de g % chaque année écoulée
+   let fvUnitaire = 0;
+   for(let mois=0; mois<m1; mois++){
+     const anneeEcoulee = Math.floor(mois/12);
+     const contribUnitaire = Math.pow(1+g, anneeEcoulee) * (1-entree);
+     fvUnitaire = fvUnitaire*(1+rm) + contribUnitaire;
+   }
+   const versementInitial = fvUnitaire>0 ? reste/fvUnitaire : 0;
+   const versementDerniereAnnee = versementInitial*Math.pow(1+g, Math.max(Math.ceil(n1)-1,0));
+   const totalVerseCumule = Math.abs(g)<1e-9 ? versementInitial*12*n1 : versementInitial*12*((Math.pow(1+g,n1)-1)/g);
+   const dejaSuffisant = capitalNecessaire<=fvExistant;
+
+   return {primary:{label:'Versement mensuel initial',value:fmtEUR(versementInitial)},
+     secondary:[
+       {label:'Capital nécessaire au départ en retraite',value:fmtEUR(capitalNecessaire)},
+       {label:'Capital déjà constitué, valorisé à la retraite',value:fmtEUR(fvExistant)},
+       {label:'Années avant la retraite',value:fmtNum(n1)+' ans'},
+       {label:'Versement la dernière année',value:fmtEUR(versementDerniereAnnee)},
+       {label:'Total versé cumulé sur la période',value:fmtEUR(totalVerseCumule)},
+       {label:'Rendement net de frais',value:fmtPct(rNet)},
+       {label:'Statut',value:dejaSuffisant? 'Capital déjà suffisant' : 'Effort supplémentaire nécessaire'},
+     ]};
+ }},
 ];
 
 /* ---------------- storage ---------------- */
