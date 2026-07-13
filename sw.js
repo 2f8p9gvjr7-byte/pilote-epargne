@@ -1,4 +1,4 @@
-const CACHE = 'patrimoine-hp-v10';
+const CACHE = 'patrimoine-hp-v11';
 const ASSETS = [
   './',
   './index.html',
