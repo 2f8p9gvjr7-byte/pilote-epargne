@@ -590,6 +590,39 @@ const MODULES = [
        {label:'Statut',value:dejaSuffisant? 'Capital déjà suffisant' : 'Effort supplémentaire nécessaire'},
      ]};
  }},
+{id:'capitalCroissant',num:'12',title:"Capital accumulé — versements annuels croissants",
+ subtitle:"Un versement annuel qui augmente chaque année à taux constant — formule de l'annuité croissante",
+ fields:[
+   {key:'versementInitial',label:'Versement initial',unit:'€/an',def:10000},
+   {key:'croissanceVersement',label:'Croissance annuelle du versement',unit:'%',def:5},
+   {key:'rendementAnnuel',label:'Rendement annuel',unit:'%',def:10},
+   {key:'fraisGestion',label:'Frais de gestion annuels',unit:'%',def:0},
+   {key:'duree',label:'Durée',unit:'ans',def:30},
+ ],
+ compute:v=>{
+   const F=v.versementInitial;
+   const g=v.croissanceVersement/100;
+   const r=Math.max(v.rendementAnnuel/100 - v.fraisGestion/100, -0.99);
+   const N=v.duree;
+   let VA, FV;
+   if(Math.abs(r-g)<1e-9){
+     VA = F*N/(1+r);
+     FV = VA*Math.pow(1+r,N);
+   } else {
+     VA = F*(1/(r-g))*(1-Math.pow((1+g)/(1+r),N));
+     FV = VA*Math.pow(1+r,N);
+   }
+   const totalVerse = Math.abs(g)<1e-9 ? F*N : F*((Math.pow(1+g,N)-1)/g);
+   const plusValue = FV-totalVerse;
+   const dernierVersement = F*Math.pow(1+g,Math.max(N-1,0));
+   return {primary:{label:'Capital final',value:fmtEUR(FV)},
+     secondary:[
+       {label:"Valeur actuelle de l'annuité",value:fmtEUR(VA)},
+       {label:'Total versé cumulé',value:fmtEUR(totalVerse)},
+       {label:'Plus-value',value:fmtEUR(plusValue)},
+       {label:'Dernier versement (année '+fmtNum(N)+')',value:fmtEUR(dernierVersement)},
+     ]};
+ }},
 ];
 
 /* ---------------- storage ---------------- */
